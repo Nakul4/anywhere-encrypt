@@ -3,8 +3,6 @@ from Crypto.Cipher import AES
 from Crypto.Hash import SHA256
 from Crypto import Random
 import shutil
-import ast
-import zipfile
 
 
 class encryption(object):
@@ -107,6 +105,8 @@ class encryption(object):
         filename = "password_vault.txt"
         cwd = os.getcwd()
         pass_file = os.path.join(cwd, filename)
+        if os.path.exists(pass_file):
+            return
         with open(pass_file, "w") as pf:
             pf.write(str(("Filename", "password")))
             pf.write("\n")
@@ -166,7 +166,9 @@ class encryption(object):
 
     def user_function(self):
         cwd = os.getcwd()
-        masterkey = input("Enter masterkey or press Enter to skip: ")
+        masterkey = input(
+            "Enter masterkey to use password vault or press Enter to skip: "
+        )
         if masterkey:
             self.create_password_vault(masterkey)
         else:
