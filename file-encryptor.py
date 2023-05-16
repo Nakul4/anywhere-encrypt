@@ -3,6 +3,7 @@ from Crypto.Cipher import AES
 from Crypto.Hash import SHA256
 from Crypto import Random
 import shutil
+import ast
 
 
 class encryption(object):
@@ -55,8 +56,10 @@ class encryption(object):
         os.remove(file)
         return
 
-    def decrypt(self, file, password):
+    def decrypt(self, file, password, masterkey):
+
         file = file.strip(" ")  ## remove quotations
+
         try:
             dir, filename = os.path.split(file)
         except:
@@ -64,10 +67,16 @@ class encryption(object):
             dir = os.getcwd()
             file = os.path.join(dir, filename)
 
-        chunksize = 64 * 1024
-        key = self.keygen(password)
         outfile = filename[10:]  ## after "encrypted_"
         outputfile = os.path.join(dir, outfile)
+        if password != masterkey:
+            if self.check_password(outputfile, password, masterkey) == False:
+                print("Wrong password")
+                print("Decryption Unsuccessful")
+                return 0
+        chunksize = 64 * 1024
+        key = self.keygen(password)
+
         if os.path.exists(outputfile):
             print("File already exists")
             return
@@ -94,7 +103,7 @@ class encryption(object):
             os.remove(outputfile)
         except:
             pass
-        return
+        return 1
 
     def keygen(self, password):
         hasher = SHA256.new(password.encode("utf-8"))
@@ -113,56 +122,66 @@ class encryption(object):
         pf.close()
 
         self.encrypt(pass_file, masterkey)
+        try:
+            os.remove(pass_file)
+        except:
+            pass
         return
+
+    def check_password(self, filename, password, masterkey):
+
+        enc_pass_file = "encrypted_password_vault.txt"
+        pass_file = enc_pass_file[10:]
+        password_file = self.decrypt(enc_pass_file, masterkey, masterkey)
+        tup = (filename, password)
+        with open(pass_file, "r") as pfile:
+            data = []
+            for line in pfile.readlines():
+                data.append(ast.literal_eval(line))
+        pfile.close()
+        self.encrypt(pass_file, masterkey)
+        if tup in data:
+            return True
+        return False
 
     def update_password_vault(self, filename, password, masterkey):
 
         enc_pass_file = "encrypted_password_vault.txt"
         pass_file = enc_pass_file[10:]
-        password_file = self.decrypt(enc_pass_file, masterkey)
+        password_file = self.decrypt(enc_pass_file, masterkey, masterkey)
         tup = (filename, password)
-        with open(pass_file, "a") as pfile:
-            pfile.write(str(tup))
-            pfile.write("\n")
-        pfile.close()
+        with open(pass_file, "r") as rfile:
+            data = []
+            for line in rfile.readlines():
+                data.append(ast.literal_eval(line))
+        rfile.close()
 
+        found = [item for item in data if item[0] == filename]
+        if found == []:
+            with open(pass_file, "a") as pfile:
+                pfile.write(str(tup))
+                pfile.write("\n")
+            pfile.close()
+        else:
+            data.remove(found[0])
+            data.append((filename, password))
+            with open(pass_file, "w") as wfile:
+                for item in data:
+                    wfile.write(str(item))
+                    wfile.write("\n")
+            wfile.close()
         self.encrypt(pass_file, masterkey)
         return
 
     def check_password_vault(self, masterkey):
         enc_pass_file = "encrypted_password_vault.txt"
-        self.decrypt(enc_pass_file, masterkey)
+        self.decrypt(enc_pass_file, masterkey, masterkey)
         pass_file = os.path.join(os.getcwd(), enc_pass_file[10:])
         with open(pass_file, "r") as pfile:
             for line in pfile.readlines():
                 print(line)
         pfile.close()
         self.encrypt(pass_file, masterkey)
-
-    def cmd_user_function(self, *args):
-
-        if args[0] == "enc":
-            for i in range(1, len(args) - 1):
-                filename = args[i]
-                password = args[len(args) - 1]
-                key = self.keygen(password)
-                if os.path.exists(os.path.join(os.getcwd(), filename)):
-                    encrypted_file = self.encrypt(filename, key)
-                else:
-                    print("File does not exist\n")
-
-        elif args[0] == "dec":
-            for i in range(1, len(args) - 1):
-                filename = args[i]
-                password = args[len(args) - 1]
-                key = self.keygen(password)
-                if os.path.exists(os.path.join(os.getcwd(), filename)):
-                    decrypted_file = self.decrypt(filename, key)
-                else:
-                    print("File does not exist\n")
-        else:
-            print("Incorrect operation")
-        return
 
     def user_function(self):
         cwd = os.getcwd()
@@ -172,46 +191,96 @@ class encryption(object):
         if masterkey:
             self.create_password_vault(masterkey)
         else:
-            pass
-        prompt = int(
-            input(
-                "Press 1 to encrypt file or directory\nPress 2 to decrypt file or directory\nPress 3 to view password vault: "
+            default_masterkey = str(1)
+            masterkey = default_masterkey  ## default masterkey
+            self.create_password_vault(masterkey)
+        while True:
+            prompt = int(
+                input(
+                    "Press 1 to encrypt file(s) or directory(s)\nPress 2 to decrypt file(s) or directory(s)\nPress 3 to view password vault\nPress 4 to exit: "
+                )
             )
-        )
-        if prompt == 1:
-            filename = input("Enter file or directory: ")
-            filename = filename.replace('"', "")
-            file = os.path.join(cwd, filename)
-            if os.path.exists(file):
-                password = input("Enter password: ")
-                encrypted_file = self.encrypt(filename, password)
-                print("Encryption successful")
-                if masterkey:
-                    print("Saving password into password vault\n")
-                    self.update_password_vault(filename, password, masterkey)
-                else:
-                    pass
-            else:
-                print("File does not exist\n")
-                print("Encryption unsuccessful")
+            if prompt == 1:
+                filename = input(
+                    "Enter / Drag file(s) or directory(s) (Separate by space ' '): "
+                )
+                file_list = filename.split('" "')
+                loop_breaker_flag = 0
+                for item in file_list:
+                    if str(item).count(".") == 1:
+                        continue
+                    elif str(item).count(".") == 0:
+                        loop_breaker_flag = 1
+                        break
+                    else:
+                        file_list.remove(item)
+                        file_list.extend(item.split())
+                if loop_breaker_flag == 1:
+                    print("Sorry something went wrong with files entered\n")
+                    break
+                for i, item in enumerate(file_list):
+                    print(f"File {i+1}: {item}")
+                    filename = item.replace('"', "")
+                    file = os.path.join(cwd, filename)
+                    if os.path.exists(file):
+                        password = input("Enter password: ")
+                        encrypted_file = self.encrypt(filename, password)
+                        print("Encryption successful")
+                        if masterkey:
+                            print("Saving password into password vault\n")
+                            self.update_password_vault(filename, password, masterkey)
+                        else:
+                            pass
+                    else:
+                        print("File does not exist\n")
+                        print("Encryption unsuccessful")
 
-        elif prompt == 2:
-            filename = input("Enter file: ")
-            filename = filename.replace('"', "")
-            file = os.path.join(cwd, filename)
-            if os.path.exists(file):
-                password = input("Enter password: ")
-                decrypted_file = self.decrypt(filename, password)
-                print("Decryption successful")
-            else:
-                print("File does not exist")
-                print("Decryption unsuccessful")
+            elif prompt == 2:
+                filename = input("Enter / Drag file(s): ")
+                file_list = filename.split('" "')
+                loop_breaker_flag = 0
+                for item in file_list:
+                    if str(item).count(".") == 1:
+                        continue
+                    elif str(item).count(".") == 0:
+                        loop_breaker_flag = 1
+                        break
+                    else:
+                        file_list.remove(item)
+                        file_list.extend(item.split())
+                if loop_breaker_flag == 1:
+                    print("Sorry something went wrong with files entered\n")
+                    break
+                for i, item in enumerate(file_list):
+                    print(f"File {i+1}: {item}")
+                    filename = item.replace('"', "")
+                    file = os.path.join(cwd, filename)
+                    if os.path.exists(file):
+                        password = input("Enter password: ")
+                        decrypted_file = self.decrypt(filename, password, masterkey)
+                        if decrypted_file == 1:
+                            print("Decryption Sucessful")
+                        else:
+                            print(decrypted_file)
+                            print("Decryption unsuccessful")
+                    else:
+                        print("File does not exist")
+                        print("Decryption unsuccessful")
 
-        elif prompt == 3:
-            if masterkey:
-                self.check_password_vault(masterkey)
-        else:
-            print("Wrong Prompt")
+            elif prompt == 3:
+                if masterkey != default_masterkey:
+                    self.check_password_vault(masterkey)
+                elif masterkey == default_masterkey:
+                    input_masterkey = input("Enter masterkey: ")
+                    if input_masterkey == masterkey:
+                        self.check_password_vault(masterkey)
+                    else:
+                        print("Wrong masterkey inserted")
+            elif prompt == 4:
+                break
+            else:
+                print("Wrong Prompt. Enter again: ")
+        return
 
 
 def main():
