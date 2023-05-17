@@ -57,3 +57,15 @@ In future, I would like to create an android and ios app for the same. The viewe
 # License
 
 The program is absolutely free to be used for both commercial and non-commercial purposes
+
+# Citation
+
+Please use the following citation if you want to use anywhere-encrypt for publication
+
+@software{nakul:anywhere-encrypt,
+      title={anywhere-encrypt},
+      version={1.0},
+      author={Nakul Ghate},
+      year={2023},
+      url={https://github.com/Nakul4/anywhere-encrypt}
+}
