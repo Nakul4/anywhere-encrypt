@@ -64,15 +64,10 @@ Please use the following citation if you want to use anywhere-encrypt for public
 
 ```html
 @software{nakul:anywhere-encrypt,
-
       title={anywhere-encrypt},
-
       version={1.0},
-
       author={Nakul Ghate},
-
       year={2023},
-      
       url={https://github.com/Nakul4/anywhere-encrypt}
 }
-```html
+```
