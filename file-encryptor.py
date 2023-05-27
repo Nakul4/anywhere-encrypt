@@ -68,6 +68,8 @@ class encryption(object):
             file = os.path.join(dir, filename)
 
         outfile = filename[10:]  ## after "encrypted_"
+        if filename[-3:] == 'zip':
+            outfile = filename[10:-4]
         outputfile = os.path.join(dir, outfile)
         if password != masterkey:
             if self.check_password(outputfile, password, masterkey) == False:
@@ -129,7 +131,8 @@ class encryption(object):
         return
 
     def check_password(self, filename, password, masterkey):
-
+        
+        print(filename)
         enc_pass_file = "encrypted_password_vault.txt"
         pass_file = enc_pass_file[10:]
         password_file = self.decrypt(enc_pass_file, masterkey, masterkey)
@@ -188,10 +191,10 @@ class encryption(object):
         masterkey = input(
             "Enter masterkey to use password vault or press Enter to skip: "
         )
+        default_masterkey = str(1)
         if masterkey:
             self.create_password_vault(masterkey)
         else:
-            default_masterkey = str(1)
             masterkey = default_masterkey  ## default masterkey
             self.create_password_vault(masterkey)
         while True:
@@ -207,14 +210,17 @@ class encryption(object):
                 file_list = filename.split('" "')
                 loop_breaker_flag = 0
                 for item in file_list:
-                    if str(item).count(".") == 1:
+                    if os.path.isfile(item):
+                        if str(item).count(".") == 1:
+                            continue
+                        elif str(item).count(".") == 0:
+                            loop_breaker_flag = 1
+                            break
+                        else:
+                            file_list.remove(item)
+                            file_list.extend(item.split())
+                    elif os.path.isdir(item):
                         continue
-                    elif str(item).count(".") == 0:
-                        loop_breaker_flag = 1
-                        break
-                    else:
-                        file_list.remove(item)
-                        file_list.extend(item.split())
                 if loop_breaker_flag == 1:
                     print("Sorry something went wrong with files entered\n")
                     break
