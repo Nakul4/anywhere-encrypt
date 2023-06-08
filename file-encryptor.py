@@ -152,6 +152,8 @@ class encryption(object):
         enc_pass_file = "encrypted_password_vault.txt"
         pass_file = enc_pass_file[10:]
         password_file = self.decrypt(enc_pass_file, masterkey, masterkey)
+        cwd = os.getcwd()
+        filename = os.path.join(cwd, filename)
         tup = (filename, password)
         with open(pass_file, "r") as rfile:
             data = []
